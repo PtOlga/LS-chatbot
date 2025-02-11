@@ -41,7 +41,7 @@ def load_english_pages(urls):
     
     for url in urls:
         # Если в URL нет языкового префикса (например, "/ru", "/ar"), то это английская страница
-        if not any(lang in url for lang in ["/ru", "/ar", "/ch"]):  
+        if not any(lang in url for lang in ["/ru", "/ar", "/es", "/ch"]):  
             loader = WebBaseLoader([url])
             documents = loader.load()
             english_docs.extend(documents)  # Добавляем загруженные страницы в список
