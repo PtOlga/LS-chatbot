@@ -27,6 +27,7 @@ jobs:
         echo "LANGCHAIN_TRACING_V2=${{ secrets.LANGCHAIN_TRACING_V2 }}" >> $GITHUB_ENV
         echo "LANGSMITH_ENDPOINT=${{ secrets.LANGSMITH_ENDPOINT }}" >> $GITHUB_ENV
         echo "LANGSMITH_PROJECT=${{ secrets.LANGSMITH_PROJECT }}" >> $GITHUB_ENV
+        echo "USER_AGENT=${{ secrets.USER_AGENT }}" >> $GITHUB_ENV
 
     - name: Run your script
       run: |
@@ -37,3 +38,4 @@ jobs:
         LANGCHAIN_TRACING_V2: ${{ secrets.LANGCHAIN_TRACING_V2 }}
         LANGSMITH_ENDPOINT: ${{ secrets.LANGSMITH_ENDPOINT }}
         LANGSMITH_PROJECT: ${{ secrets.LANGSMITH_PROJECT }}
+        USER_AGENT: ${{ secrets.USER_AGENT }}
