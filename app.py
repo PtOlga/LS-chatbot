@@ -9,13 +9,35 @@ from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from requests.exceptions import RequestException
 
 # Загружаем переменные окружения (если работаем локально)
-load_dotenv(verbose=True)
+# load_dotenv(verbose=True)
+# Определяем, работает ли код локально (например, если `.env` существует)
+is_local = os.path.exists(".env")
+
+# Загружаем переменные окружения, если работаем локально
+if is_local:
+    load_dotenv(verbose=True)
 
 # Загружаем API-ключи через Streamlit secrets (для облачного запуска)
-GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", None)
-USER_AGENT = st.secrets.get("USER_AGENT", None)
+try:
+    GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+    USER_AGENT = st.secrets["USER_AGENT"]
+    LANGSMITH_TRACING = st.secrets["LANGSMITH_TRACING"] 
+    LANGSMITH_ENDPOINT = st.secrets["LANGSMITH_ENDPOINT"]
+    LANGSMITH_API_KEY = st.secrets["LANGSMITH_API_KEY"]
+    LANGSMITH_PROJECT = st.secrets["LANGSMITH_PROJECT"]
+    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+except FileNotFoundError:
+    # Если secrets.toml не найден, используем переменные окружения
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    USER_AGENT = os.getenv("USER_AGENT")
+    LANGSMITH_TRACING = os.getenv("LANGSMITH_TRACING") 
+    LANGSMITH_ENDPOINT = os.getenv("LANGSMITH_ENDPOINT")
+    LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+    LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Проверяем, заданы ли API-ключи
 if not GROQ_API_KEY:
@@ -23,6 +45,21 @@ if not GROQ_API_KEY:
     st.stop()
 if not USER_AGENT:
     st.error("Ошибка: USER_AGENT не задана в переменных окружения.")
+    st.stop()
+if not LANGSMITH_TRACING:
+    st.error("Ошибка: LANGSMITH_TRACING не задана в переменных окружения.")
+    st.stop()
+if not LANGSMITH_ENDPOINT:
+    st.error("Ошибка: LANGSMITH_ENDPOINT не задана в переменных окружения.")
+    st.stop()
+if not LANGSMITH_API_KEY:
+    st.error("Ошибка: LANGSMITH_API_KEY не задана в переменных окружения.")
+    st.stop()
+if not LANGSMITH_PROJECT:
+    st.error("Ошибка: LANGSMITH_PROJECT не задана в переменных окружения.")
+    st.stop()
+if not OPENAI_API_KEY :
+    st.error("Ошибка: OPENAI_API_KEY  не задана в переменных окружения.")
     st.stop()
 
 # Настройка LLM
@@ -41,9 +78,13 @@ def load_english_pages(urls):
     
     for url in urls:
         if not any(lang in url for lang in ["/ru", "/ar", "/es", "/ch"]):  
-            loader = WebBaseLoader(url)  # Исправлено: передаем строку
-            documents = loader.load()
-            english_docs.extend(documents)
+            try:
+                loader = WebBaseLoader(url)
+                documents = loader.load()
+                if documents:  # Проверяем, что документы не пустые
+                    english_docs.extend(documents)
+            except RequestException as e:
+                st.error(f"Ошибка при загрузке страницы {url}: {e}")
     
     return english_docs
 
@@ -62,16 +103,11 @@ retriever = vector_store.as_retriever()
 # Промпт для бота
 template = """
 You are a helpful legal assistant that answers questions based on information from status.law.
-
 Answer accurately and concisely.
-
 Question: {question}
-
 Only use the provided context to answer the question.
-
 Context: {context}
 """
-
 prompt = PromptTemplate.from_template(template)
 
 # История сообщений
@@ -90,22 +126,18 @@ st.write("Этот бот отвечает на юридические вопр�
 
 # Поле для ввода вопроса
 user_input = st.text_input("Введите ваш вопрос:")
-
 if st.button("Отправить"):
     if user_input:
         # Создание цепочки обработки запроса
         chain = (
-            RunnableLambda(lambda x: {"context": retriever.get_relevant_documents(x["question"])})  # Исправлено
+            RunnableLambda(lambda x: {"context": retriever.get_relevant_documents(x["question"])})
             | prompt
             | llm
             | StrOutputParser()
         )
-
         # Запуск цепочки
         response = chain.invoke({"question": user_input})
-
         # Добавляем в историю сообщений
         message_history.append({"question": user_input, "answer": response})
-
         # Выводим ответ
         st.write(response)
