@@ -10,25 +10,20 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
-# Настройка USER_AGENT
-os.environ["USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+# Загружаем переменные окружения (если работаем локально)
+load_dotenv(verbose=True)
 
-# Загружаем переменные окружения
-# load_dotenv()
+# Загружаем API-ключи через Streamlit secrets (для облачного запуска)
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", None)
+USER_AGENT = st.secrets.get("USER_AGENT", None)
 
-load_dotenv(verbose=True)  # Загружаем .env (если есть)
-
-print(f"GROQ_API_KEY из окружения: {os.getenv('GROQ_API_KEY')}")
-
-
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-USER_AGENT = os.getenv("USER_AGENT")
-
-# Проверяем наличие переменных окружения
+# Проверяем, заданы ли API-ключи
 if not GROQ_API_KEY:
-    raise ValueError("GROQ_API_KEY не задана в переменных окружения.")
+    st.error("Ошибка: GROQ_API_KEY не задана в переменных окружения.")
+    st.stop()
 if not USER_AGENT:
-    raise ValueError("USER_AGENT не задана в переменных окружения.")
+    st.error("Ошибка: USER_AGENT не задана в переменных окружения.")
+    st.stop()
 
 # Настройка LLM
 llm = ChatGroq(
@@ -45,11 +40,10 @@ def load_english_pages(urls):
     english_docs = []
     
     for url in urls:
-        # Если в URL нет языкового префикса (например, "/ru", "/ar"), то это английская страница
         if not any(lang in url for lang in ["/ru", "/ar", "/es", "/ch"]):  
-            loader = WebBaseLoader([url])
+            loader = WebBaseLoader(url)  # Исправлено: передаем строку
             documents = loader.load()
-            english_docs.extend(documents)  # Добавляем загруженные страницы в список
+            english_docs.extend(documents)
     
     return english_docs
 
@@ -99,13 +93,9 @@ user_input = st.text_input("Введите ваш вопрос:")
 
 if st.button("Отправить"):
     if user_input:
-        chain = {
-            "context": retriever,
-            "question": RunnablePassthrough(),        }
-
         # Создание цепочки обработки запроса
         chain = (
-            RunnableLambda(lambda x: {"context": retriever.invoke(x["question"])})
+            RunnableLambda(lambda x: {"context": retriever.get_relevant_documents(x["question"])})  # Исправлено
             | prompt
             | llm
             | StrOutputParser()
@@ -119,4 +109,3 @@ if st.button("Отправить"):
 
         # Выводим ответ
         st.write(response)
-
