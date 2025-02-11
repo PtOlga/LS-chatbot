@@ -10,12 +10,20 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
+# Настройка USER_AGENT
 os.environ["USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-
 
 # Загружаем переменные окружения
 load_dotenv()
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+USER_AGENT = os.getenv("USER_AGENT")
+
+# Проверяем наличие переменных окружения
+if not GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY не задана в переменных окружения.")
+if not USER_AGENT:
+    raise ValueError("USER_AGENT не задана в переменных окружения.")
 
 # Настройка LLM
 llm = ChatGroq(
@@ -89,13 +97,3 @@ if st.button("Отправить"):
         chain = {
             "context": retriever,
             "question": RunnablePassthrough(),
-            "chat_history": RunnableLambda(lambda x: format_history(message_history))
-        } | prompt | llm | StrOutputParser()
-
-        result = chain.invoke(user_input)
-
-        # Сохраняем историю
-        message_history.append({"question": user_input, "answer": result})
-
-        # Выводим ответ
-        st.write("**Бот:**", result)
