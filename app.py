@@ -96,4 +96,22 @@ if st.button("Отправить"):
     if user_input:
         chain = {
             "context": retriever,
-            "question": RunnablePassthrough(),
+            "question": RunnablePassthrough(),        }
+
+        # Создание цепочки обработки запроса
+        chain = (
+            RunnableLambda(lambda x: {"context": retriever.invoke(x["question"])})
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
+
+        # Запуск цепочки
+        response = chain.invoke({"question": user_input})
+
+        # Добавляем в историю сообщений
+        message_history.append({"question": user_input, "answer": response})
+
+        # Выводим ответ
+        st.write(response)
+
