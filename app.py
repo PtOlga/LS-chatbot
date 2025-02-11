@@ -14,7 +14,12 @@ from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 os.environ["USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 
 # Загружаем переменные окружения
-load_dotenv()
+# load_dotenv()
+
+load_dotenv(verbose=True)  # Загружаем .env (если есть)
+
+print(f"GROQ_API_KEY из окружения: {os.getenv('GROQ_API_KEY')}")
+
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 USER_AGENT = os.getenv("USER_AGENT")
